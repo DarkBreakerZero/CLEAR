@@ -6,7 +6,7 @@ Install torch-randon (https://github.com/matteo-ronchetti/torch-radon)
 
 Generate simulated low-dose CT data: gen_ld_data.py
 
-Generate training data: make_proj_img_list.py
+Generate training data: make_proj_img_list_3d.py
 
 Train and Validation: train_clear_without_gan.py, train_clear_with_gan.py, train_clear_with_gan_multi_step.py
 
