@@ -38,13 +38,11 @@ def train_recon(train_loader, writer, epoch, g_model, g_optm, g_lr):
         hdCT = hdCT.cuda()
 
 
-        proj_net, img_fbp, img_net, proj_re = g_model(ldProj)
+        proj_net, img_fbp, img_net = g_model(ldProj)
 
-        loss1 = 20 * F.l1_loss(proj_net, hdProj)
-        loss2 = F.mse_loss(img_fbp, hdCT)
-        loss3 = F.mse_loss(img_net, hdCT)
-        loss4 = 20 * F.l1_loss(proj_re, hdProj)
-        g_loss_recon = 0.01 * loss1 + 0.01 * loss2 + loss3 + 0.05 * loss4
+        loss_proj = 20 * F.l1_loss(proj_net, hdProj)
+        loss_img = F.mse_loss(img_net, hdCT)
+        g_loss_recon = 0.01 * loss_proj + loss_img
 
         g_loss = g_loss_recon
 
@@ -52,7 +50,7 @@ def train_recon(train_loader, writer, epoch, g_model, g_optm, g_lr):
         g_loss.backward()
         g_optm.step()
 
-        loss_recon_scalar.update(loss3.item(), hdCT.size(0))
+        loss_recon_scalar.update(loss_img.item(), hdCT.size(0))
 
         batch_time.update(time.time() - end)
         end = time.time()
@@ -65,15 +63,10 @@ def train_recon(train_loader, writer, epoch, g_model, g_optm, g_lr):
 
     writer.add_scalar('learning_rate_g', g_lr.get_last_lr()[0], epoch + 1)
 
-    writer.add_image('train img/label-fbp-result img',
-                     normalization(torch.cat([hdCT[0, :, 1, :, :], img_fbp[0, :, 1, :, :], img_net[0, :, 1, :, :]], 2)),
-                     epoch + 1)
-    writer.add_image('train img/label-result-reproj proj', normalization(
-        torch.cat([hdProj[0, :, 1, :, :], proj_net[0, :, 1, :, :], proj_re[0, :, 1, :, :]], 2)), epoch + 1)
-    writer.add_image('train img/residual img', normalization(torch.abs(hdCT[0, :, 1, :, :] - img_net[0, :, 1, :, :])),
-                     epoch + 1)
-    writer.add_image('train img/residual proj',
-                     normalization(torch.abs(hdProj[0, :, 1, :, :] - proj_net[0, :, 1, :, :])), epoch + 1)
+    writer.add_image('train img/label-fbp-result img', normalization(torch.cat([hdCT[0, :, 1, :, :], img_fbp[0, :, 1, :, :], img_net[0, :, 1, :, :]], 2)), epoch + 1)
+    writer.add_image('train img/label-result proj', normalization(torch.cat([hdProj[0, :, 1, :, :], proj_net[0, :, 1, :, :]], 2)), epoch + 1)
+    writer.add_image('train img/residual img', normalization(torch.abs(hdCT[0, :, 1, :, :] - img_net[0, :, 1, :, :])), epoch + 1)
+    writer.add_image('train img/residual proj', normalization(torch.abs(hdProj[0, :, 1, :, :] - proj_net[0, :, 1, :, :])), epoch + 1)
     # writer.add_image('train img/patches', normalization(patches_show[16, :, 2, :, :]), epoch + 1)
 
     print('Train Epoch: {}\t train_mse_loss: {:.6f}\t'.format(epoch + 1, loss_recon_scalar.avg))
@@ -100,7 +93,7 @@ def train(train_loader, writer, epoch, g_model, g_optm, g_lr, d_model, d_optm, d
         hdCT = data["hdct"]
         hdCT = hdCT.cuda()
 
-        proj_net, img_fbp, img_net, proj_re = g_model(ldProj)
+        proj_net, img_fbp, img_net = g_model(ldProj)
 
         d_optm.zero_grad()
 
@@ -125,26 +118,23 @@ def train(train_loader, writer, epoch, g_model, g_optm, g_lr, d_model, d_optm, d
         g_optm.zero_grad()
 
         if step % 1 == 0:
-            proj_net, img_fbp, img_net, proj_re = g_model(ldProj)
+            proj_net, img_fbp, img_net = g_model(ldProj)
 
             fake = d_model(extract_patches_online(img_net, 4))
             # fake = d_model(img_net)            
 
             g_loss_adv = -torch.mean(fake)
 
-            loss1 = 20 * F.l1_loss(proj_net, hdProj)
-            loss2 = F.mse_loss(img_fbp, hdCT)
-            loss3 = F.mse_loss(img_net, hdCT)
-            loss4 = 20 * F.l1_loss(proj_re, hdProj)
-            # g_loss_recon = 0.01 * loss1 + 0.01 * loss2 + loss3 + 0.05 * loss4
-            g_loss_recon = loss3
+            loss_proj = 20 * F.l1_loss(proj_net, hdProj)
+            loss_img = F.mse_loss(img_net, hdCT)
+            g_loss_recon = 0.01 * loss_proj + loss_img
 
             g_loss = g_loss_recon + 0.01 * g_loss_adv
 
             g_loss.backward()
             g_optm.step()
 
-            loss_recon_scalar.update(loss3.item(), hdCT.size(0))
+            loss_recon_scalar.update(loss_img.item(), hdCT.size(0))
 
         loss_recon_scalar.update(loss3.item(), hdCT.size(0))
         batch_time.update(time.time() - end)
@@ -158,19 +148,12 @@ def train(train_loader, writer, epoch, g_model, g_optm, g_lr, d_model, d_optm, d
     writer.add_scalars('recon_loss', {'train_mse_loss': loss_recon_scalar.avg}, epoch + 1)
     writer.add_scalars('adv_loss', {'loss_d_adv': loss_adv_scalar.avg}, epoch + 1)
 
-
     writer.add_scalar('learning_rate_g', g_lr.get_last_lr()[0], epoch + 1)
     writer.add_scalar('learning_rate_d', d_lr.get_last_lr()[0], epoch + 1)
-
-    writer.add_image('train img/label-fbp-result img',
-                     normalization(torch.cat([hdCT[0, :, 1, :, :], img_fbp[0, :, 1, :, :], img_net[0, :, 1, :, :]], 2)),
-                     epoch + 1)
-    writer.add_image('train img/label-result-reproj proj', normalization(
-        torch.cat([hdProj[0, :, 1, :, :], proj_net[0, :, 1, :, :], proj_re[0, :, 1, :, :]], 2)), epoch + 1)
-    writer.add_image('train img/residual img', normalization(torch.abs(hdCT[0, :, 1, :, :] - img_net[0, :, 1, :, :])),
-                     epoch + 1)
-    writer.add_image('train img/residual proj',
-                     normalization(torch.abs(hdProj[0, :, 1, :, :] - proj_net[0, :, 1, :, :])), epoch + 1)
+    writer.add_image('train img/label-fbp-result img', normalization(torch.cat([hdCT[0, :, 1, :, :], img_fbp[0, :, 1, :, :], img_net[0, :, 1, :, :]], 2)), epoch + 1)
+    writer.add_image('train img/label-result proj', normalization(torch.cat([hdProj[0, :, 1, :, :], proj_net[0, :, 1, :, :]], 2)), epoch + 1)
+    writer.add_image('train img/residual img', normalization(torch.abs(hdCT[0, :, 1, :, :] - img_net[0, :, 1, :, :])), epoch + 1)
+    writer.add_image('train img/residual proj', normalization(torch.abs(hdProj[0, :, 1, :, :] - proj_net[0, :, 1, :, :])), epoch + 1)
 
     print('Train Epoch: {}\t train_mse_loss: {:.6f}\t'.format(epoch + 1, loss_recon_scalar.avg))
 
@@ -195,25 +178,20 @@ def valid(valid_loader, g_model, writer, epoch):
 
         with torch.no_grad():
 
-            proj_net, img_fbp, img_net, proj_re = g_model(ldProj)
-            loss3 = F.mse_loss(img_net, hdCT)
+            proj_net, img_fbp, img_net = g_model(ldProj)
+            loss_img = F.mse_loss(img_net, hdCT)
 
-        loss_recon_scalar.update(loss3.item(), hdCT.size(0))
+        loss_recon_scalar.update(loss_img.item(), hdCT.size(0))
         batch_time.update(time.time() - end)
         end = time.time()
 
         step += 1
 
     writer.add_scalars('recon_loss', {'valid_mse_loss': loss_recon_scalar.avg}, epoch + 1)
-    writer.add_image('valid img/label-fbp-result img',
-                     normalization(torch.cat([hdCT[0, :, 1, :, :], img_fbp[0, :, 1, :, :], img_net[0, :, 1, :, :]], 2)),
-                     epoch + 1)
-    writer.add_image('valid img/label-result-reproj proj', normalization(
-        torch.cat([hdProj[0, :, 1, :, :], proj_net[0, :, 1, :, :], proj_re[0, :, 1, :, :]], 2)), epoch + 1)
-    writer.add_image('valid img/residual img', normalization(torch.abs(hdCT[0, :, 1, :, :] - img_net[0, :, 1, :, :])),
-                     epoch + 1)
-    writer.add_image('valid img/residual proj',
-                     normalization(torch.abs(hdProj[0, :, 1, :, :] - proj_net[0, :, 1, :, :])), epoch + 1)
+    writer.add_image('valid img/label-fbp-result img', normalization(torch.cat([hdCT[0, :, 1, :, :], img_fbp[0, :, 1, :, :], img_net[0, :, 1, :, :]], 2)), epoch + 1)
+    writer.add_image('valid img/label-result proj', normalization(torch.cat([hdProj[0, :, 1, :, :], proj_net[0, :, 1, :, :]], 2)), epoch + 1)
+    writer.add_image('valid img/residual img', normalization(torch.abs(hdCT[0, :, 1, :, :] - img_net[0, :, 1, :, :])), epoch + 1)
+    writer.add_image('valid img/residual proj', normalization(torch.abs(hdProj[0, :, 1, :, :] - proj_net[0, :, 1, :, :])), epoch + 1)
 
     print('Valid Epoch: {}\t valid_mse_loss: {:.6f}\t'.format(epoch + 1, loss_recon_scalar.avg))
 
@@ -230,7 +208,6 @@ if __name__ == "__main__":
 
     # Get dataset
     train_dataset = npz_proj_img_reader_func.npz_proj_img_reader(paired_data_txt='./txt/train_3d_list_s5e4.txt')
-    # train_dataset = npz_proj_img_reader_func.npz_proj_img_reader(paired_data_txt='./txt/valid_3d_list_s5e4.txt')
     train_loader = DataLoader(train_dataset, batch_size=batch_size, num_workers=16, shuffle=True)
 
     valid_dataset = npz_proj_img_reader_func.npz_proj_img_reader(paired_data_txt='./txt/valid_3d_list_s5e4.txt')
