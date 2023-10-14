@@ -156,12 +156,8 @@ class GeneratorCLEAR(nn.Module):
         img_fbp = recon_ops_example.backprojection(recon_ops_example.filter_sinogram(proj_net)) * 1024
         # print(img_fbp.size())
         img_net = self.net[1](img_fbp)
-        # print(img_net.size())
-        proj_re = recon_ops_example.forward(img_net / 1024)
-        # print(proj_re.size())
 
-        return proj_net, img_fbp, img_net, proj_re
-        # return proj_net, img_fbp, img_net, proj_re, img_fbp_0
+        return proj_net, img_net
 
 class DiscriminatorCLEAR(nn.Module):
     def __init__(self, in_chl=1, out_chl=1, model_chl=32):
