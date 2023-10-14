@@ -37,7 +37,7 @@ def train(train_loader, model, optimizer, scheduler, writer, epoch):
         hdCT = data["hdct"]
         hdCT = hdCT.cuda()
 
-        proj_net, img_net = model(ldProj)
+        proj_net, img_fbp, img_net = model(ldProj)
 
         loss_proj = 20 * F.l1_loss(proj_net, hdProj)
         loss_img = F.mse_loss(img_net, hdCT)
@@ -59,7 +59,7 @@ def train(train_loader, model, optimizer, scheduler, writer, epoch):
     writer.add_scalars('train_loss', {'loss_proj': loss_proj.avg}, epoch + 1)
     writer.add_scalar('learning_rate', scheduler.get_last_lr()[0], epoch + 1)
 
-    writer.add_image('train img/label-result img', normalization(torch.cat([hdCT[0, :, 1, :, :], img_net[0, :, 1, :, :]], 2)), epoch + 1)
+    writer.add_image('valid img/label-fbp-result img', normalization(torch.cat([hdCT[0, :, 1, :, :], img_fbp[0, :, 1, :, :], img_net[0, :, 1, :, :]], 2)), epoch + 1)
     writer.add_image('train img/label-result proj', normalization(torch.cat([hdProj[0, :, 1, :, :], proj_net[0, :, 1, :, :]], 2)), epoch + 1)
     writer.add_image('train img/residual img', normalization(torch.abs(hdCT[0, :, 1, :, :] - img_net[0, :, 1, :, :])), epoch + 1)
     writer.add_image('train img/residual proj', normalization(torch.abs(hdProj[0, :, 1, :, :] - proj_net[0, :, 1, :, :])), epoch + 1)
@@ -92,7 +92,7 @@ def valid(valid_loader, model, writer, epoch):
 
         with torch.no_grad():
 
-            proj_net, img_net = model(ldProj)
+            proj_net, img_fbp, img_net = model(ldProj)
 
             loss_proj = 20 * F.l1_loss(proj_net, hdProj)
             loss_img = F.mse_loss(img_net, hdCT)
@@ -108,7 +108,7 @@ def valid(valid_loader, model, writer, epoch):
     writer.add_scalars('valid_loss', {'loss_img': loss_img.avg}, epoch + 1)
     writer.add_scalars('valid_loss', {'loss_proj': loss_proj.avg}, epoch + 1)
 
-    writer.add_image('valid img/label-result img', normalization(torch.cat([hdCT[0, :, 1, :, :], img_net[0, :, 1, :, :]], 2)), epoch + 1)
+    writer.add_image('valid img/label-fbp-result img', normalization(torch.cat([hdCT[0, :, 1, :, :], img_fbp[0, :, 1, :, :], img_net[0, :, 1, :, :]], 2)), epoch + 1)
     writer.add_image('valid img/label-result proj', normalization(torch.cat([hdProj[0, :, 1, :, :], proj_net[0, :, 1, :, :]], 2)), epoch + 1)
     writer.add_image('valid img/residual img', normalization(torch.abs(hdCT[0, :, 1, :, :] - img_net[0, :, 1, :, :])), epoch + 1)
     writer.add_image('valid img/residual proj', normalization(torch.abs(hdProj[0, :, 1, :, :] - proj_net[0, :, 1, :, :])), epoch + 1)
