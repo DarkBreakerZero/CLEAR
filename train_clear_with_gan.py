@@ -38,7 +38,7 @@ def train(train_loader, writer, epoch, g_model, g_optm, g_lr, d_model, d_optm, d
         hdCT = data["hdct"]
         hdCT = hdCT.cuda()
 
-        proj_net, img_net = g_model(ldProj)
+        proj_net, _, img_net = g_model(ldProj)
 
         d_optm.zero_grad()
 
@@ -47,8 +47,7 @@ def train(train_loader, writer, epoch, g_model, g_optm, g_lr, d_model, d_optm, d
         real = d_model(extract_patches_online(hdCT, 4))
         fake = d_model(extract_patches_online(img_net, 4))
 
-        gradient_penalty = compute_gradient_penalty(d_model, extract_patches_online(hdCT, 4),
-                                                    extract_patches_online(img_net, 4))
+        gradient_penalty = compute_gradient_penalty(d_model, extract_patches_online(hdCT, 4), extract_patches_online(img_net, 4))
         d_loss_adv = -torch.mean(real) + torch.mean(fake) + 10 * gradient_penalty
         d_loss_adv.backward()
         d_optm.step()
@@ -58,7 +57,8 @@ def train(train_loader, writer, epoch, g_model, g_optm, g_lr, d_model, d_optm, d
         g_optm.zero_grad()
 
         if step % 1 == 0:
-            proj_net, img_net = g_model(ldProj)
+            
+            proj_net, img_fbp, img_net = g_model(ldProj)
 
             fake = d_model(extract_patches_online(img_net, 4))
 
@@ -89,15 +89,10 @@ def train(train_loader, writer, epoch, g_model, g_optm, g_lr, d_model, d_optm, d
 
     writer.add_scalar('learning_rate', g_lr.get_last_lr()[0], epoch + 1)
 
-    writer.add_image('train img/label-result img',
-                     normalization(torch.cat([hdCT[0, :, 1, :, :], img_net[0, :, 1, :, :]], 2)),
-                     epoch + 1)
-    writer.add_image('train img/label-result proj', normalization(
-        torch.cat([hdProj[0, :, 1, :, :], proj_net[0, :, 1, :, :]], 2)), epoch + 1)
-    writer.add_image('train img/residual img', normalization(torch.abs(hdCT[0, :, 1, :, :] - img_net[0, :, 1, :, :])),
-                     epoch + 1)
-    writer.add_image('train img/residual proj',
-                     normalization(torch.abs(hdProj[0, :, 1, :, :] - proj_net[0, :, 1, :, :])), epoch + 1)
+    writer.add_image('valid img/label-fbp-result img', normalization(torch.cat([hdCT[0, :, 1, :, :], img_fbp[0, :, 1, :, :], img_net[0, :, 1, :, :]], 2)), epoch + 1)
+    writer.add_image('train img/label-result proj', normalization(torch.cat([hdProj[0, :, 1, :, :], proj_net[0, :, 1, :, :]], 2)), epoch + 1)
+    writer.add_image('train img/residual img', normalization(torch.abs(hdCT[0, :, 1, :, :] - img_net[0, :, 1, :, :])), epoch + 1)
+    writer.add_image('train img/residual proj', normalization(torch.abs(hdProj[0, :, 1, :, :] - proj_net[0, :, 1, :, :])), epoch + 1)
     # writer.add_image('train img/patches', normalization(patches_show[16, :, 2, :, :]), epoch + 1)
 
     print('Train Epoch: {}\t train_mse_loss: {:.6f}\t'.format(epoch + 1, loss_recon_scalar.avg))
@@ -124,7 +119,7 @@ def valid(valid_loader, g_model, writer, epoch):
 
         with torch.no_grad():
 
-            proj_net, img_net = g_model(ldProj)
+            proj_net, img_fbp, img_net = g_model(ldProj)
             loss_img = F.mse_loss(img_net, hdCT)
 
         loss_recon_scalar.update(loss_img.item(), hdCT.size(0))
@@ -134,15 +129,10 @@ def valid(valid_loader, g_model, writer, epoch):
         step += 1
 
     writer.add_scalars('recon_loss', {'valid_mse_loss': loss_recon_scalar.avg}, epoch + 1)
-    writer.add_image('valid img/label-result img',
-                     normalization(torch.cat([hdCT[0, :, 1, :, :], img_net[0, :, 1, :, :]], 2)),
-                     epoch + 1)
-    writer.add_image('valid img/label-result proj', normalization(
-        torch.cat([hdProj[0, :, 1, :, :], proj_net[0, :, 1, :, :]], 2)), epoch + 1)
-    writer.add_image('valid img/residual img', normalization(torch.abs(hdCT[0, :, 1, :, :] - img_net[0, :, 1, :, :])),
-                     epoch + 1)
-    writer.add_image('valid img/residual proj',
-                     normalization(torch.abs(hdProj[0, :, 1, :, :] - proj_net[0, :, 1, :, :])), epoch + 1)
+    writer.add_image('valid img/label-fbp-result img', normalization(torch.cat([hdCT[0, :, 1, :, :], img_fbp[0, :, 1, :, :], img_net[0, :, 1, :, :]], 2)), epoch + 1)
+    writer.add_image('valid img/label-result proj', normalization(torch.cat([hdProj[0, :, 1, :, :], proj_net[0, :, 1, :, :]], 2)), epoch + 1)
+    writer.add_image('valid img/residual img', normalization(torch.abs(hdCT[0, :, 1, :, :] - img_net[0, :, 1, :, :])), epoch + 1)
+    writer.add_image('valid img/residual proj', normalization(torch.abs(hdProj[0, :, 1, :, :] - proj_net[0, :, 1, :, :])), epoch + 1)
 
     print('Valid Epoch: {}\t valid_mse_loss: {:.6f}\t'.format(epoch + 1, loss_recon_scalar.avg))
 
