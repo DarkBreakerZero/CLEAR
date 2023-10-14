@@ -157,7 +157,7 @@ class GeneratorCLEAR(nn.Module):
         # print(img_fbp.size())
         img_net = self.net[1](img_fbp)
 
-        return proj_net, img_net
+        return proj_net, img_fbp, img_net
 
 class DiscriminatorCLEAR(nn.Module):
     def __init__(self, in_chl=1, out_chl=1, model_chl=32):
