@@ -1,6 +1,6 @@
 # CLEAR
 
-A Pytorch-Version for CLEAR. Some details are different from the original paper. (Note: CLEAR_with_GAN is not easy to train)
+A Pytorch-Version for CLEAR. Some details are different from the original paper. Note: CLEAR_with_GAN is not easy to train
 
 Install torch-randon (https://github.com/matteo-ronchetti/torch-radon)
 
