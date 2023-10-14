@@ -127,7 +127,6 @@ if __name__ == "__main__":
 
     # Get dataset
     train_dataset = npz_proj_img_reader_func.npz_proj_img_reader(paired_data_txt='./txt/train_3d_list_s5e4.txt')
-    # train_dataset = npz_proj_img_reader_func.npz_proj_img_reader(paired_data_txt='./txt/valid_3d_list_s5e4.txt')
     train_loader = DataLoader(train_dataset, batch_size=batch_size, num_workers=16, shuffle=True)
 
     valid_dataset = npz_proj_img_reader_func.npz_proj_img_reader(paired_data_txt='./txt/valid_3d_list_s5e4.txt')
