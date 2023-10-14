@@ -37,18 +37,15 @@ def train(train_loader, model, optimizer, scheduler, writer, epoch):
         hdCT = data["hdct"]
         hdCT = hdCT.cuda()
 
-        proj_net, img_fbp, img_net, proj_re = model(ldProj)
+        proj_net, img_net = model(ldProj)
 
-        loss1 = 20 * F.l1_loss(proj_net, hdProj)
-        loss2 = F.mse_loss(img_fbp, hdCT)
-        loss3 = F.mse_loss(img_net, hdCT)
-        loss4 = 20 * F.l1_loss(proj_re, hdProj)
+        loss_proj = 20 * F.l1_loss(proj_net, hdProj)
+        loss_img = F.mse_loss(img_net, hdCT)
 
-        loss = 0.01 * loss1 + 0.01 * loss2 + loss3 + 0.05 * loss4
-        # loss = 0.01 * loss1 + loss3
+        loss = 0.01 * loss_proj + loss_img
 
-        loss_img.update(loss3.item(), hdCT.size(0))
-        loss_proj.update(loss1.item(), hdProj.size(0))
+        loss_img.update(loss_img.item(), hdCT.size(0))
+        loss_proj.update(loss_proj.item(), hdProj.size(0))
         batch_time.update(time.time() - end)
         end = time.time()
 
@@ -62,8 +59,8 @@ def train(train_loader, model, optimizer, scheduler, writer, epoch):
     writer.add_scalars('train_loss', {'loss_proj': loss_proj.avg}, epoch + 1)
     writer.add_scalar('learning_rate', scheduler.get_last_lr()[0], epoch + 1)
 
-    writer.add_image('train img/label-fbp-result img', normalization(torch.cat([hdCT[0, :, 1, :, :], img_fbp[0, :, 1, :, :], img_net[0, :, 1, :, :]], 2)), epoch + 1)
-    writer.add_image('train img/label-result-reproj proj', normalization(torch.cat([hdProj[0, :, 1, :, :], proj_net[0, :, 1, :, :], proj_re[0, :, 1, :, :]], 2)), epoch + 1)
+    writer.add_image('train img/label-result img', normalization(torch.cat([hdCT[0, :, 1, :, :], img_net[0, :, 1, :, :]], 2)), epoch + 1)
+    writer.add_image('train img/label-result proj', normalization(torch.cat([hdProj[0, :, 1, :, :], proj_net[0, :, 1, :, :]], 2)), epoch + 1)
     writer.add_image('train img/residual img', normalization(torch.abs(hdCT[0, :, 1, :, :] - img_net[0, :, 1, :, :])), epoch + 1)
     writer.add_image('train img/residual proj', normalization(torch.abs(hdProj[0, :, 1, :, :] - proj_net[0, :, 1, :, :])), epoch + 1)
 
@@ -95,13 +92,13 @@ def valid(valid_loader, model, writer, epoch):
 
         with torch.no_grad():
 
-            proj_net, img_fbp, img_net, proj_re = model(ldProj)
+            proj_net, img_net = model(ldProj)
 
-            loss1 = 20 * F.l1_loss(proj_net, hdProj)
-            loss3 = F.mse_loss(img_net, hdCT)
+            loss_proj = 20 * F.l1_loss(proj_net, hdProj)
+            loss_img = F.mse_loss(img_net, hdCT)
 
-        loss_img.update(loss3.item(), hdCT.size(0))
-        loss_proj.update(loss1.item(), hdProj.size(0))
+        loss_img.update(loss_img.item(), hdCT.size(0))
+        loss_proj.update(loss_proj.item(), hdProj.size(0))
 
         batch_time.update(time.time() - end)
         end = time.time()
@@ -111,8 +108,8 @@ def valid(valid_loader, model, writer, epoch):
     writer.add_scalars('valid_loss', {'loss_img': loss_img.avg}, epoch + 1)
     writer.add_scalars('valid_loss', {'loss_proj': loss_proj.avg}, epoch + 1)
 
-    writer.add_image('valid img/label-fbp-result img', normalization(torch.cat([hdCT[0, :, 1, :, :], img_fbp[0, :, 1, :, :], img_net[0, :, 1, :, :]], 2)), epoch + 1)
-    writer.add_image('valid img/label-result-reproj proj', normalization(torch.cat([hdProj[0, :, 1, :, :], proj_net[0, :, 1, :, :], proj_re[0, :, 1, :, :]], 2)), epoch + 1)
+    writer.add_image('valid img/label-result img', normalization(torch.cat([hdCT[0, :, 1, :, :], img_net[0, :, 1, :, :]], 2)), epoch + 1)
+    writer.add_image('valid img/label-result proj', normalization(torch.cat([hdProj[0, :, 1, :, :], proj_net[0, :, 1, :, :]], 2)), epoch + 1)
     writer.add_image('valid img/residual img', normalization(torch.abs(hdCT[0, :, 1, :, :] - img_net[0, :, 1, :, :])), epoch + 1)
     writer.add_image('valid img/residual proj', normalization(torch.abs(hdProj[0, :, 1, :, :] - proj_net[0, :, 1, :, :])), epoch + 1)
 
