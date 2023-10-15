@@ -9,5 +9,6 @@ A Pytorch-Version of CLEAR. Some details are different from the original paper. 
 5. Test: test_clear.py
 
 Please cite the following references:
+
 1. TorchRadon: Fast Differentiable Routines for Computed Tomography
 2. CLEAR: comprehensive learning enabled adversarial reconstruction for subtle structure enhanced low-dose CT imaging
