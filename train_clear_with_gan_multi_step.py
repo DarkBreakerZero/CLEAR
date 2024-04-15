@@ -142,8 +142,8 @@ def train(train_loader, writer, epoch, g_model, g_optm, g_lr, d_model, d_optm, d
 
         step += 1
 
-    # g_lr.step()
-    # d_lr.step()
+    g_lr.step()
+    d_lr.step()
 
     writer.add_scalars('recon_loss', {'train_mse_loss': loss_recon_scalar.avg}, epoch + 1)
     writer.add_scalars('adv_loss', {'loss_d_adv': loss_adv_scalar.avg}, epoch + 1)
